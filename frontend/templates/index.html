@@ -56,7 +56,7 @@
       <h2 id="tradeTitle">Trade</h2>
       <p class="muted" id="tradeSub"></p>
       <div class="switch"><button id="buyBtn" class="selected" onclick="setSide('buy')">Buy</button><button id="sellBtn" onclick="setSide('sell')">Sell</button></div>
-      <label>Quantity</label><input id="qty" type="number" min="0.0001" step="0.0001" value="1" />
+      <label>Quantity</label><input id="qty" type="number" min="0.0001" step="any" value="1" />
       <div class="preview"><span>Estimated Value</span><strong id="estimate">$0</strong></div>
       <button class="primary" onclick="submitTrade()">Execute Dummy Order</button>
       <p id="tradeMsg" class="msg"></p>

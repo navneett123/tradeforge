@@ -22,7 +22,7 @@ function renderAssets(items){
   const box = document.getElementById('assets');
   box.innerHTML = items.map(a => `
     <div class="asset">
-      <div class="asset-top"><div><div class="symbol">${a.symbol}</div><div class="name">${a.name}</div></div><span class="badge">${a.type}</span></div>
+      <div class="asset-top"><div><div class="symbol">${a.symbol}</div><div class="name">${a.name}</div></div><span class="badge">${a.type}${a.source ? " · live" : ""}</span></div>
       <div class="price">${money(a.price)}</div>
       <div class="change ${a.change_pct >= 0 ? 'good':'bad'}">${a.change_pct >= 0 ? '▲':'▼'} ${Math.abs(a.change_pct || 0)}%</div>
       <div class="actions"><button class="buy" onclick='openTrade(${JSON.stringify(a)},"buy")'>Buy</button><button class="sell" onclick='openTrade(${JSON.stringify(a)},"sell")'>Sell</button></div>
@@ -48,7 +48,9 @@ function setSide(s){ side=s; document.getElementById('buyBtn').classList.toggle(
 function updateEstimate(){ const q = Number(document.getElementById('qty').value || 0); document.getElementById('estimate').textContent = money(q * (selected?.price || 0)); }
 async function submitTrade(){
   const msg = document.getElementById('tradeMsg'); msg.className='msg'; msg.textContent='Processing...';
-  const payload = { asset_id:selected.id, symbol:selected.symbol, name:selected.name, asset_type:selected.type, side, quantity:Number(document.getElementById('qty').value), price:Number(selected.price) };
+  const quantity = Number(document.getElementById('qty').value);
+  if(!quantity || quantity <= 0){ msg.textContent='Enter a quantity greater than 0'; msg.classList.add('err'); return; }
+  const payload = { asset_id:selected.id, symbol:selected.symbol, name:selected.name, asset_type:selected.type, side, quantity, price:Number(selected.price) };
   const res = await fetch('/api/trade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   const data = await res.json();
   if(!res.ok){ msg.textContent = data.detail || 'Order failed'; msg.classList.add('err'); return; }
@@ -74,5 +76,7 @@ async function submitWallet(){
   state.portfolio = data.portfolio; render();
 }
 document.getElementById('qty').addEventListener('input', updateEstimate);
-let timer; document.getElementById('search').addEventListener('input', e => { clearTimeout(timer); timer=setTimeout(async()=>{ const r=await fetch('/api/search?q='+encodeURIComponent(e.target.value)); const items=await r.json(); renderAssets(items); },300); });
+let timer; document.getElementById('search').addEventListener('input', e => { clearTimeout(timer); timer=setTimeout(async()=>{ const r=await fetch('/api/search?q='+encodeURIComponent(e.target.value)); const data=await r.json();
+    if(!r.ok || data.detail){ document.getElementById('assets').innerHTML = `<div class="empty">${data.detail || 'Search failed.'}</div>`; return; }
+    renderAssets(data); },300); });
 load();

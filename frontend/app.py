@@ -51,7 +51,13 @@ def bootstrap():
 @app.get("/api/search")
 def search():
     q = request.args.get("q", "")
-    return jsonify(safe_get(f"{MARKET_URL}/search?q={q}", []))
+    
+    try:
+        response = requests.get(f"{MARKET_URL}/search", params={"q": q}, timeout=8)
+        response.raise_for_status()
+        return jsonify(response.json())
+    except Exception as exc:
+        return jsonify({"detail": f"Market search failed: {exc}"}), 502
 
 @app.post("/api/trade")
 def trade():
