@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TradeForge</title>
+  <link rel="stylesheet" href="/static/css/styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand"><div class="logo">TF</div><div><strong>TradeForge</strong><span>Market simulation platform</span></div></div>
+      <nav><a class="active">Dashboard</a><a>Wallet</a><a>Markets</a><a>Portfolio</a><a>Recommendations</a></nav>
+      <div class="side-card"><span>Release Flow</span><b>PR → Dev → Prod</b><small>Starter workflows included for AKS rollout later.</small></div>
+    </aside>
+    <main class="main">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Python Microservices Demo</p>
+          <h1>Modern paper-trading workspace for coins and equities.</h1>
+          <p class="muted">Search external market data, manage a dummy wallet, buy or sell assets, and review custom recommendation signals.</p>
+          <div class="hero-actions"><button onclick="openWallet('deposit')">Deposit Funds</button><button onclick="openWallet('withdraw')">Withdraw Funds</button></div>
+        </div>
+        <div class="hero-card"><span>Available Wallet Balance</span><strong id="cash">$0</strong><small>Dummy capital for practice trades</small></div>
+      </section>
+
+      <section class="stats">
+        <div class="stat"><span>Invested</span><strong id="invested">$0</strong></div>
+        <div class="stat"><span>Net Worth</span><strong id="netWorth">$0</strong></div>
+        <div class="stat"><span>Open Holdings</span><strong id="holdingCount">0</strong></div>
+        <div class="stat"><span>Assets Loaded</span><strong id="assetCount">0</strong></div>
+      </section>
+
+      <section class="grid two">
+        <div class="panel wide">
+          <div class="panel-head"><div><h2>Market Search</h2><p>Coins and US equities from external APIs</p></div><input id="search" placeholder="Search BTC, ETH, AAPL, Tesla..." /></div>
+          <div id="assets" class="asset-grid"></div>
+        </div>
+        <div class="panel">
+          <h2>Custom Recommendations</h2>
+          <p class="muted panel-sub">Rule-based signals using price movement and wallet context.</p>
+          <div id="recommendations" class="recs"></div>
+        </div>
+      </section>
+
+      <section class="grid two bottom">
+        <div class="panel"><h2>Portfolio</h2><div id="holdings" class="list"></div></div>
+        <div class="panel"><h2>Recent Activity</h2><div id="transactions" class="list"></div></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal hidden" id="tradeModal">
+    <div class="modal-card">
+      <button class="close" onclick="closeTrade()">×</button>
+      <h2 id="tradeTitle">Trade</h2>
+      <p class="muted" id="tradeSub"></p>
+      <div class="switch"><button id="buyBtn" class="selected" onclick="setSide('buy')">Buy</button><button id="sellBtn" onclick="setSide('sell')">Sell</button></div>
+      <label>Quantity</label><input id="qty" type="number" min="0.0001" step="0.0001" value="1" />
+      <div class="preview"><span>Estimated Value</span><strong id="estimate">$0</strong></div>
+      <button class="primary" onclick="submitTrade()">Execute Dummy Order</button>
+      <p id="tradeMsg" class="msg"></p>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="walletModal">
+    <div class="modal-card">
+      <button class="close" onclick="closeWallet()">×</button>
+      <h2 id="walletTitle">Deposit Funds</h2>
+      <p class="muted" id="walletSub">Add or remove dummy cash from your trading wallet.</p>
+      <div class="switch"><button id="depositBtn" class="selected" onclick="setWalletMode('deposit')">Deposit</button><button id="withdrawBtn" onclick="setWalletMode('withdraw')">Withdraw</button></div>
+      <label>Amount</label><input id="walletAmount" type="number" min="1" step="1" value="1000" />
+      <label>Note</label><input id="walletNote" type="text" placeholder="Optional note" />
+      <button class="primary" onclick="submitWallet()">Confirm Wallet Action</button>
+      <p id="walletMsg" class="msg"></p>
+    </div>
+  </div>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

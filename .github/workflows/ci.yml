@@ -1,0 +1,39 @@
+name: starter-ci
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  python-checks:
+    name: Python syntax checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Compile Python files
+        run: python -m compileall frontend services
+
+  docker-build-check:
+    name: Docker build check
+    runs-on: ubuntu-latest
+    needs: python-checks
+    strategy:
+      matrix:
+        service:
+          - { name: frontend, dockerfile: frontend/Dockerfile }
+          - { name: market-service, dockerfile: services/market_service/Dockerfile }
+          - { name: wallet-service, dockerfile: services/wallet_service/Dockerfile }
+          - { name: order-service, dockerfile: services/order_service/Dockerfile }
+          - { name: portfolio-service, dockerfile: services/portfolio_service/Dockerfile }
+          - { name: recommendation-service, dockerfile: services/recommendation_service/Dockerfile }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image only
+        run: docker build -f ${{ matrix.service.dockerfile }} -t tradeforge-${{ matrix.service.name }}:ci .

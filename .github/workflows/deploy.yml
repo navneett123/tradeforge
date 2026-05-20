@@ -1,0 +1,80 @@
+name: starter-aks-deployment
+
+# Starter flow for later AKS automation:
+# PR reviewed/approved -> merge to main -> build/push images
+# -> automatic deploy to dev -> manual approval through GitHub Environment "prod"
+# -> rolling update in prod -> rollback if rollout health check fails.
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build-push:
+    name: Build and push service images
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ env.IMAGE_TAG }}
+    strategy:
+      matrix:
+        service:
+          - { image: frontend, dockerfile: frontend/Dockerfile }
+          - { image: market-service, dockerfile: services/market_service/Dockerfile }
+          - { image: wallet-service, dockerfile: services/wallet_service/Dockerfile }
+          - { image: order-service, dockerfile: services/order_service/Dockerfile }
+          - { image: portfolio-service, dockerfile: services/portfolio_service/Dockerfile }
+          - { image: recommendation-service, dockerfile: services/recommendation_service/Dockerfile }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.IMAGE_REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - name: Build and push image
+        run: |
+          docker build -f ${{ matrix.service.dockerfile }} -t ${{ secrets.IMAGE_REGISTRY }}/tradeforge-${{ matrix.service.image }}:${IMAGE_TAG} .
+          docker push ${{ secrets.IMAGE_REGISTRY }}/tradeforge-${{ matrix.service.image }}:${IMAGE_TAG}
+
+  deploy-dev:
+    name: Deploy automatically to dev
+    runs-on: ubuntu-latest
+    needs: build-push
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Set AKS context
+        uses: azure/aks-set-context@v4
+        with:
+          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
+      - name: Rolling deploy to dev
+        run: ./scripts/deploy.sh dev ${{ secrets.IMAGE_REGISTRY }} ${{ needs.build-push.outputs.image_tag }}
+
+  deploy-prod:
+    name: Deploy to prod after manual approval
+    runs-on: ubuntu-latest
+    needs: [build-push, deploy-dev]
+    environment: prod
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Set AKS context
+        uses: azure/aks-set-context@v4
+        with:
+          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
+      - name: Rolling deploy to prod with rollback on failure
+        run: ./scripts/deploy.sh prod ${{ secrets.IMAGE_REGISTRY }} ${{ needs.build-push.outputs.image_tag }}
