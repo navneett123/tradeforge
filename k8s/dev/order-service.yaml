@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: order-service
-          image: tradeforgeacr001.azureacr.io/tradeforge/order-service:latest
+          image: tradeforgeacr001.azurecr.io/tradeforge/order-service:latest
           ports:
             - containerPort: 8000
           env:
