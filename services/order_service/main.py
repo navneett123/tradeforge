@@ -6,8 +6,8 @@ import os, requests
 app = FastAPI(title="TradeForge Order Service", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-WALLET_URL = os.getenv("WALLET_URL", "http://wallet-service:8004")
-PORTFOLIO_URL = os.getenv("PORTFOLIO_URL", "http://portfolio-service:8002")
+WALLET_URL = os.getenv("WALLET_SERVICE_URL", os.getenv("WALLET_URL", "http://wallet-service:8000"))
+PORTFOLIO_URL = os.getenv("PORTFOLIO_SERVICE_URL", os.getenv("PORTFOLIO_URL", "http://portfolio-service:8000"))
 
 class Trade(BaseModel):
     asset_id: str
