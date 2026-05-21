@@ -1,0 +1,63 @@
+name: Build and Push Images
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login using OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to ACR
+        run: az acr login --name ${{ vars.ACR_NAME }}
+
+      - name: Build and Push Frontend
+        run: |
+          docker build -t $ACR_LOGIN_SERVER/tradeforge/frontend:${{ github.sha }} ./frontend
+          docker push $ACR_LOGIN_SERVER/tradeforge/frontend:${{ github.sha }}
+
+      - name: Build and Push Market Service
+        run: |
+          docker build -t $ACR_LOGIN_SERVER/tradeforge/market-service:${{ github.sha }} ./services/market_service
+          docker push $ACR_LOGIN_SERVER/tradeforge/market-service:${{ github.sha }}
+
+      - name: Build and Push Wallet Service
+        run: |
+          docker build -t $ACR_LOGIN_SERVER/tradeforge/wallet-service:${{ github.sha }} ./services/wallet_service
+          docker push $ACR_LOGIN_SERVER/tradeforge/wallet-service:${{ github.sha }}
+
+      - name: Build and Push Order Service
+        run: |
+          docker build -t $ACR_LOGIN_SERVER/tradeforge/order-service:${{ github.sha }} ./services/order_service
+          docker push $ACR_LOGIN_SERVER/tradeforge/order-service:${{ github.sha }}
+
+      - name: Build and Push Portfolio Service
+        run: |
+          docker build -t $ACR_LOGIN_SERVER/tradeforge/portfolio-service:${{ github.sha }} ./services/portfolio_service
+          docker push $ACR_LOGIN_SERVER/tradeforge/portfolio-service:${{ github.sha }}
+
+      - name: Build and Push Recommendation Service
+        run: |
+          docker build -t $ACR_LOGIN_SERVER/tradeforge/recommendation-service:${{ github.sha }} ./services/recommendation_service
+          docker push $ACR_LOGIN_SERVER/tradeforge/recommendation-service:${{ github.sha }}
+
+      - name: Verify ACR Repositories
+        run: az acr repository list --name ${{ vars.ACR_NAME }} --output table
