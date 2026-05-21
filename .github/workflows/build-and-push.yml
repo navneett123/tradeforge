@@ -27,37 +27,77 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Login to ACR
-        run: az acr login --name ${{ vars.ACR_NAME }}
+        run: |
+          az acr login --name ${{ vars.ACR_NAME }}
 
+      # FRONTEND
       - name: Build and Push Frontend
         run: |
-          docker build -t $ACR_LOGIN_SERVER/tradeforge/frontend:${{ github.sha }} ./frontend
-          docker push $ACR_LOGIN_SERVER/tradeforge/frontend:${{ github.sha }}
+          docker build \
+            -t $ACR_LOGIN_SERVER/tradeforge/frontend:${{ github.sha }} \
+            -t $ACR_LOGIN_SERVER/tradeforge/frontend:latest \
+            ./frontend
 
+          docker push $ACR_LOGIN_SERVER/tradeforge/frontend:${{ github.sha }}
+          docker push $ACR_LOGIN_SERVER/tradeforge/frontend:latest
+
+      # MARKET SERVICE
       - name: Build and Push Market Service
         run: |
-          docker build -t $ACR_LOGIN_SERVER/tradeforge/market-service:${{ github.sha }} ./services/market_service
-          docker push $ACR_LOGIN_SERVER/tradeforge/market-service:${{ github.sha }}
+          docker build \
+            -t $ACR_LOGIN_SERVER/tradeforge/market-service:${{ github.sha }} \
+            -t $ACR_LOGIN_SERVER/tradeforge/market-service:latest \
+            ./services/market_service
 
+          docker push $ACR_LOGIN_SERVER/tradeforge/market-service:${{ github.sha }}
+          docker push $ACR_LOGIN_SERVER/tradeforge/market-service:latest
+
+      # WALLET SERVICE
       - name: Build and Push Wallet Service
         run: |
-          docker build -t $ACR_LOGIN_SERVER/tradeforge/wallet-service:${{ github.sha }} ./services/wallet_service
-          docker push $ACR_LOGIN_SERVER/tradeforge/wallet-service:${{ github.sha }}
+          docker build \
+            -t $ACR_LOGIN_SERVER/tradeforge/wallet-service:${{ github.sha }} \
+            -t $ACR_LOGIN_SERVER/tradeforge/wallet-service:latest \
+            ./services/wallet_service
 
+          docker push $ACR_LOGIN_SERVER/tradeforge/wallet-service:${{ github.sha }}
+          docker push $ACR_LOGIN_SERVER/tradeforge/wallet-service:latest
+
+      # ORDER SERVICE
       - name: Build and Push Order Service
         run: |
-          docker build -t $ACR_LOGIN_SERVER/tradeforge/order-service:${{ github.sha }} ./services/order_service
-          docker push $ACR_LOGIN_SERVER/tradeforge/order-service:${{ github.sha }}
+          docker build \
+            -t $ACR_LOGIN_SERVER/tradeforge/order-service:${{ github.sha }} \
+            -t $ACR_LOGIN_SERVER/tradeforge/order-service:latest \
+            ./services/order_service
 
+          docker push $ACR_LOGIN_SERVER/tradeforge/order-service:${{ github.sha }}
+          docker push $ACR_LOGIN_SERVER/tradeforge/order-service:latest
+
+      # PORTFOLIO SERVICE
       - name: Build and Push Portfolio Service
         run: |
-          docker build -t $ACR_LOGIN_SERVER/tradeforge/portfolio-service:${{ github.sha }} ./services/portfolio_service
-          docker push $ACR_LOGIN_SERVER/tradeforge/portfolio-service:${{ github.sha }}
+          docker build \
+            -t $ACR_LOGIN_SERVER/tradeforge/portfolio-service:${{ github.sha }} \
+            -t $ACR_LOGIN_SERVER/tradeforge/portfolio-service:latest \
+            ./services/portfolio_service
 
+          docker push $ACR_LOGIN_SERVER/tradeforge/portfolio-service:${{ github.sha }}
+          docker push $ACR_LOGIN_SERVER/tradeforge/portfolio-service:latest
+
+      # RECOMMENDATION SERVICE
       - name: Build and Push Recommendation Service
         run: |
-          docker build -t $ACR_LOGIN_SERVER/tradeforge/recommendation-service:${{ github.sha }} ./services/recommendation_service
+          docker build \
+            -t $ACR_LOGIN_SERVER/tradeforge/recommendation-service:${{ github.sha }} \
+            -t $ACR_LOGIN_SERVER/tradeforge/recommendation-service:latest \
+            ./services/recommendation_service
+
           docker push $ACR_LOGIN_SERVER/tradeforge/recommendation-service:${{ github.sha }}
+          docker push $ACR_LOGIN_SERVER/tradeforge/recommendation-service:latest
 
       - name: Verify ACR Repositories
-        run: az acr repository list --name ${{ vars.ACR_NAME }} --output table
+        run: |
+          az acr repository list \
+            --name ${{ vars.ACR_NAME }} \
+            --output table
