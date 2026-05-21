@@ -2,11 +2,11 @@ from flask import Flask, render_template, request, jsonify
 import os, requests
 
 app = Flask(__name__)
-MARKET_URL = os.getenv("MARKET_URL", "http://market-service:8001")
-WALLET_URL = os.getenv("WALLET_URL", "http://wallet-service:8004")
-ORDER_URL = os.getenv("ORDER_URL", "http://order-service:8005")
-PORTFOLIO_URL = os.getenv("PORTFOLIO_URL", "http://portfolio-service:8002")
-RECO_URL = os.getenv("RECO_URL", "http://recommendation-service:8003")
+MARKET_URL = os.getenv("MARKET_SERVICE_URL", os.getenv("MARKET_URL", "http://market-service:8000"))
+WALLET_URL = os.getenv("WALLET_SERVICE_URL", os.getenv("WALLET_URL", "http://wallet-service:8000"))
+ORDER_URL = os.getenv("ORDER_SERVICE_URL", os.getenv("ORDER_URL", "http://order-service:8000"))
+PORTFOLIO_URL = os.getenv("PORTFOLIO_SERVICE_URL", os.getenv("PORTFOLIO_URL", "http://portfolio-service:8000"))
+RECO_URL = os.getenv("RECOMMENDATION_SERVICE_URL", os.getenv("RECO_URL", "http://recommendation-service:8000"))
 
 def safe_get(url, fallback):
     try:
