@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: dev
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: tradeforgeacr001.azurecr.io/tradeforge/frontend:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: MARKET_SERVICE_URL
+              value: "http://market-service:8000"
+            - name: WALLET_SERVICE_URL
+              value: "http://wallet-service:8000"
+            - name: ORDER_SERVICE_URL
+              value: "http://order-service:8000"
+            - name: PORTFOLIO_SERVICE_URL
+              value: "http://portfolio-service:8000"
+            - name: RECOMMENDATION_SERVICE_URL
+              value: "http://recommendation-service:8000"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: dev
+spec:
+  type: LoadBalancer
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 8080
