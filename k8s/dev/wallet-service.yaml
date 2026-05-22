@@ -21,6 +21,7 @@ spec:
       containers:
         - name: wallet-service
           image: tradeforgeacr001.azurecr.io/tradeforge/wallet-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
 ---

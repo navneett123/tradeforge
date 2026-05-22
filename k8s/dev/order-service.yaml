@@ -21,6 +21,7 @@ spec:
       containers:
         - name: order-service
           image: tradeforgeacr001.azurecr.io/tradeforge/order-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           env:

@@ -21,6 +21,7 @@ spec:
       containers:
         - name: market-service
           image: tradeforgeacr001.azurecr.io/tradeforge/market-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
 ---

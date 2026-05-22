@@ -21,6 +21,7 @@ spec:
       containers:
         - name: portfolio-service
           image: tradeforgeacr001.azurecr.io/tradeforge/portfolio-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
 ---

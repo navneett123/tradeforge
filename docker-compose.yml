@@ -1,17 +1,17 @@
 services:
   frontend:
     build:
-      context: .
-      dockerfile: frontend/Dockerfile
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: tradeforge-frontend
     ports:
       - "8080:8080"
     environment:
-      MARKET_URL: http://market-service:8000
-      WALLET_URL: http://wallet-service:8000
-      ORDER_URL: http://order-service:8000
-      PORTFOLIO_URL: http://portfolio-service:8000
-      RECO_URL: http://recommendation-service:8000
+      MARKET_SERVICE_URL: http://market-service:8000
+      WALLET_SERVICE_URL: http://wallet-service:8000
+      ORDER_SERVICE_URL: http://order-service:8000
+      PORTFOLIO_SERVICE_URL: http://portfolio-service:8000
+      RECOMMENDATION_SERVICE_URL: http://recommendation-service:8000
     depends_on:
       - market-service
       - wallet-service
@@ -21,46 +21,46 @@ services:
 
   market-service:
     build:
-      context: .
-      dockerfile: services/market_service/Dockerfile
+      context: ./services/market_service
+      dockerfile: Dockerfile
     container_name: tradeforge-market
     ports:
       - "8001:8000"
 
   wallet-service:
     build:
-      context: .
-      dockerfile: services/wallet_service/Dockerfile
+      context: ./services/wallet_service
+      dockerfile: Dockerfile
     container_name: tradeforge-wallet
     ports:
       - "8004:8000"
 
   order-service:
     build:
-      context: .
-      dockerfile: services/order_service/Dockerfile
+      context: ./services/order_service
+      dockerfile: Dockerfile
     container_name: tradeforge-order
     ports:
       - "8005:8000"
     environment:
-      WALLET_URL: http://wallet-service:8000
-      PORTFOLIO_URL: http://portfolio-service:8000
+      WALLET_SERVICE_URL: http://wallet-service:8000
+      PORTFOLIO_SERVICE_URL: http://portfolio-service:8000
     depends_on:
       - wallet-service
       - portfolio-service
 
   portfolio-service:
     build:
-      context: .
-      dockerfile: services/portfolio_service/Dockerfile
+      context: ./services/portfolio_service
+      dockerfile: Dockerfile
     container_name: tradeforge-portfolio
     ports:
       - "8002:8000"
 
   recommendation-service:
     build:
-      context: .
-      dockerfile: services/recommendation_service/Dockerfile
+      context: ./services/recommendation_service
+      dockerfile: Dockerfile
     container_name: tradeforge-recommendation
     ports:
       - "8003:8000"
