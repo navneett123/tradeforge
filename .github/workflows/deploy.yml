@@ -1,80 +1,200 @@
-name: starter-aks-deployment
-
-# Starter flow for later AKS automation:
-# PR reviewed/approved -> merge to main -> build/push images
-# -> automatic deploy to dev -> manual approval through GitHub Environment "prod"
-# -> rolling update in prod -> rollback if rollout health check fails.
+name: TradeForge Deploy Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - master
+
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 env:
-  IMAGE_TAG: ${{ github.sha }}
+  ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
 
 jobs:
-  build-push:
-    name: Build and push service images
+
+  build-and-push:
+    name: Build and Push Images
     runs-on: ubuntu-latest
-    outputs:
-      image_tag: ${{ env.IMAGE_TAG }}
-    strategy:
-      matrix:
-        service:
-          - { image: frontend, dockerfile: frontend/Dockerfile }
-          - { image: market-service, dockerfile: services/market_service/Dockerfile }
-          - { image: wallet-service, dockerfile: services/wallet_service/Dockerfile }
-          - { image: order-service, dockerfile: services/order_service/Dockerfile }
-          - { image: portfolio-service, dockerfile: services/portfolio_service/Dockerfile }
-          - { image: recommendation-service, dockerfile: services/recommendation_service/Dockerfile }
+    environment: dev
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Login to container registry
-        uses: docker/login-action@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
         with:
-          registry: ${{ secrets.IMAGE_REGISTRY }}
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-      - name: Build and push image
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to ACR
         run: |
-          docker build -f ${{ matrix.service.dockerfile }} -t ${{ secrets.IMAGE_REGISTRY }}/tradeforge-${{ matrix.service.image }}:${IMAGE_TAG} .
-          docker push ${{ secrets.IMAGE_REGISTRY }}/tradeforge-${{ matrix.service.image }}:${IMAGE_TAG}
+          az acr login --name ${{ vars.ACR_NAME }}
+
+      - name: Build and Push Frontend
+        run: |
+          docker build \
+            -t $ACR_LOGIN_SERVER/tradeforge/frontend:${{ github.sha }} \
+            -t $ACR_LOGIN_SERVER/tradeforge/frontend:latest \
+            ./frontend
+
+          docker push $ACR_LOGIN_SERVER/tradeforge/frontend:${{ github.sha }}
+          docker push $ACR_LOGIN_SERVER/tradeforge/frontend:latest
+
+      - name: Build and Push Market Service
+        run: |
+          docker build \
+            -t $ACR_LOGIN_SERVER/tradeforge/market-service:${{ github.sha }} \
+            -t $ACR_LOGIN_SERVER/tradeforge/market-service:latest \
+            ./services/market_service
+
+          docker push $ACR_LOGIN_SERVER/tradeforge/market-service:${{ github.sha }}
+          docker push $ACR_LOGIN_SERVER/tradeforge/market-service:latest
+
+      - name: Build and Push Wallet Service
+        run: |
+          docker build \
+            -t $ACR_LOGIN_SERVER/tradeforge/wallet-service:${{ github.sha }} \
+            -t $ACR_LOGIN_SERVER/tradeforge/wallet-service:latest \
+            ./services/wallet_service
+
+          docker push $ACR_LOGIN_SERVER/tradeforge/wallet-service:${{ github.sha }}
+          docker push $ACR_LOGIN_SERVER/tradeforge/wallet-service:latest
+
+      - name: Build and Push Order Service
+        run: |
+          docker build \
+            -t $ACR_LOGIN_SERVER/tradeforge/order-service:${{ github.sha }} \
+            -t $ACR_LOGIN_SERVER/tradeforge/order-service:latest \
+            ./services/order_service
+
+          docker push $ACR_LOGIN_SERVER/tradeforge/order-service:${{ github.sha }}
+          docker push $ACR_LOGIN_SERVER/tradeforge/order-service:latest
+
+      - name: Build and Push Portfolio Service
+        run: |
+          docker build \
+            -t $ACR_LOGIN_SERVER/tradeforge/portfolio-service:${{ github.sha }} \
+            -t $ACR_LOGIN_SERVER/tradeforge/portfolio-service:latest \
+            ./services/portfolio_service
+
+          docker push $ACR_LOGIN_SERVER/tradeforge/portfolio-service:${{ github.sha }}
+          docker push $ACR_LOGIN_SERVER/tradeforge/portfolio-service:latest
+
+      - name: Build and Push Recommendation Service
+        run: |
+          docker build \
+            -t $ACR_LOGIN_SERVER/tradeforge/recommendation-service:${{ github.sha }} \
+            -t $ACR_LOGIN_SERVER/tradeforge/recommendation-service:latest \
+            ./services/recommendation_service
+
+          docker push $ACR_LOGIN_SERVER/tradeforge/recommendation-service:${{ github.sha }}
+          docker push $ACR_LOGIN_SERVER/tradeforge/recommendation-service:latest
 
   deploy-dev:
-    name: Deploy automatically to dev
+    name: Deploy to DEV
     runs-on: ubuntu-latest
-    needs: build-push
+    needs: build-and-push
     environment: dev
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Login to Azure
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-      - name: Set AKS context
-        uses: azure/aks-set-context@v4
-        with:
-          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
-          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
-      - name: Rolling deploy to dev
-        run: ./scripts/deploy.sh dev ${{ secrets.IMAGE_REGISTRY }} ${{ needs.build-push.outputs.image_tag }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Configure AKS Access
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ vars.RESOURCE_GROUP }} \
+            --name ${{ vars.AKS_CLUSTER_NAME }} \
+            --overwrite-existing
+
+      - name: Deploy to DEV Namespace
+        run: |
+          kubectl apply -f k8s/dev/
+
+      - name: Restart DEV Deployments
+        run: |
+          kubectl rollout restart deployment/frontend -n dev
+          kubectl rollout restart deployment/market-service -n dev
+          kubectl rollout restart deployment/wallet-service -n dev
+          kubectl rollout restart deployment/order-service -n dev
+          kubectl rollout restart deployment/portfolio-service -n dev
+          kubectl rollout restart deployment/recommendation-service -n dev
+
+      - name: Verify DEV Rollouts
+        run: |
+          kubectl rollout status deployment/frontend -n dev --timeout=180s
+          kubectl rollout status deployment/market-service -n dev --timeout=180s
+          kubectl rollout status deployment/wallet-service -n dev --timeout=180s
+          kubectl rollout status deployment/order-service -n dev --timeout=180s
+          kubectl rollout status deployment/portfolio-service -n dev --timeout=180s
+          kubectl rollout status deployment/recommendation-service -n dev --timeout=180s
 
   deploy-prod:
-    name: Deploy to prod after manual approval
+    name: Deploy to PROD
     runs-on: ubuntu-latest
-    needs: [build-push, deploy-dev]
+    needs: deploy-dev
     environment: prod
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Login to Azure
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-      - name: Set AKS context
-        uses: azure/aks-set-context@v4
-        with:
-          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
-          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
-      - name: Rolling deploy to prod with rollback on failure
-        run: ./scripts/deploy.sh prod ${{ secrets.IMAGE_REGISTRY }} ${{ needs.build-push.outputs.image_tag }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Configure AKS Access
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ vars.RESOURCE_GROUP }} \
+            --name ${{ vars.AKS_CLUSTER_NAME }} \
+            --overwrite-existing
+
+      - name: Deploy to PROD Namespace
+        run: |
+          kubectl apply -f k8s/prod/
+
+      - name: Restart PROD Deployments
+        run: |
+          kubectl rollout restart deployment/frontend -n prod
+          kubectl rollout restart deployment/market-service -n prod
+          kubectl rollout restart deployment/wallet-service -n prod
+          kubectl rollout restart deployment/order-service -n prod
+          kubectl rollout restart deployment/portfolio-service -n prod
+          kubectl rollout restart deployment/recommendation-service -n prod
+
+      - name: Verify PROD Rollouts
+        run: |
+          kubectl rollout status deployment/frontend -n prod --timeout=180s
+          kubectl rollout status deployment/market-service -n prod --timeout=180s
+          kubectl rollout status deployment/wallet-service -n prod --timeout=180s
+          kubectl rollout status deployment/order-service -n prod --timeout=180s
+          kubectl rollout status deployment/portfolio-service -n prod --timeout=180s
+          kubectl rollout status deployment/recommendation-service -n prod --timeout=180s
+
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          kubectl rollout undo deployment/frontend -n prod
+          kubectl rollout undo deployment/market-service -n prod
+          kubectl rollout undo deployment/wallet-service -n prod
+          kubectl rollout undo deployment/order-service -n prod
+          kubectl rollout undo deployment/portfolio-service -n prod
+          kubectl rollout undo deployment/recommendation-service -n prod
