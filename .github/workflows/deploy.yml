@@ -5,7 +5,6 @@ on:
     branches:
       - main
       - master
-
   workflow_dispatch:
 
 permissions:
@@ -16,7 +15,6 @@ env:
   ACR_LOGIN_SERVER: ${{ vars.ACR_LOGIN_SERVER }}
 
 jobs:
-
   build-and-push:
     name: Build and Push Images
     runs-on: ubuntu-latest
@@ -34,68 +32,31 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Login to ACR
+        run: az acr login --name ${{ vars.ACR_NAME }}
+
+      - name: Build and Push Images
         run: |
-          az acr login --name ${{ vars.ACR_NAME }}
+          services=(
+            "frontend:./frontend"
+            "market-service:./services/market_service"
+            "wallet-service:./services/wallet_service"
+            "order-service:./services/order_service"
+            "portfolio-service:./services/portfolio_service"
+            "recommendation-service:./services/recommendation_service"
+          )
 
-      - name: Build and Push Frontend
-        run: |
-          docker build \
-            -t $ACR_LOGIN_SERVER/tradeforge/frontend:${{ github.sha }} \
-            -t $ACR_LOGIN_SERVER/tradeforge/frontend:latest \
-            ./frontend
+          for item in "${services[@]}"; do
+            name="${item%%:*}"
+            path="${item#*:}"
 
-          docker push $ACR_LOGIN_SERVER/tradeforge/frontend:${{ github.sha }}
-          docker push $ACR_LOGIN_SERVER/tradeforge/frontend:latest
+            docker build \
+              -t $ACR_LOGIN_SERVER/tradeforge/$name:${{ github.sha }} \
+              -t $ACR_LOGIN_SERVER/tradeforge/$name:latest \
+              $path
 
-      - name: Build and Push Market Service
-        run: |
-          docker build \
-            -t $ACR_LOGIN_SERVER/tradeforge/market-service:${{ github.sha }} \
-            -t $ACR_LOGIN_SERVER/tradeforge/market-service:latest \
-            ./services/market_service
-
-          docker push $ACR_LOGIN_SERVER/tradeforge/market-service:${{ github.sha }}
-          docker push $ACR_LOGIN_SERVER/tradeforge/market-service:latest
-
-      - name: Build and Push Wallet Service
-        run: |
-          docker build \
-            -t $ACR_LOGIN_SERVER/tradeforge/wallet-service:${{ github.sha }} \
-            -t $ACR_LOGIN_SERVER/tradeforge/wallet-service:latest \
-            ./services/wallet_service
-
-          docker push $ACR_LOGIN_SERVER/tradeforge/wallet-service:${{ github.sha }}
-          docker push $ACR_LOGIN_SERVER/tradeforge/wallet-service:latest
-
-      - name: Build and Push Order Service
-        run: |
-          docker build \
-            -t $ACR_LOGIN_SERVER/tradeforge/order-service:${{ github.sha }} \
-            -t $ACR_LOGIN_SERVER/tradeforge/order-service:latest \
-            ./services/order_service
-
-          docker push $ACR_LOGIN_SERVER/tradeforge/order-service:${{ github.sha }}
-          docker push $ACR_LOGIN_SERVER/tradeforge/order-service:latest
-
-      - name: Build and Push Portfolio Service
-        run: |
-          docker build \
-            -t $ACR_LOGIN_SERVER/tradeforge/portfolio-service:${{ github.sha }} \
-            -t $ACR_LOGIN_SERVER/tradeforge/portfolio-service:latest \
-            ./services/portfolio_service
-
-          docker push $ACR_LOGIN_SERVER/tradeforge/portfolio-service:${{ github.sha }}
-          docker push $ACR_LOGIN_SERVER/tradeforge/portfolio-service:latest
-
-      - name: Build and Push Recommendation Service
-        run: |
-          docker build \
-            -t $ACR_LOGIN_SERVER/tradeforge/recommendation-service:${{ github.sha }} \
-            -t $ACR_LOGIN_SERVER/tradeforge/recommendation-service:latest \
-            ./services/recommendation_service
-
-          docker push $ACR_LOGIN_SERVER/tradeforge/recommendation-service:${{ github.sha }}
-          docker push $ACR_LOGIN_SERVER/tradeforge/recommendation-service:latest
+            docker push $ACR_LOGIN_SERVER/tradeforge/$name:${{ github.sha }}
+            docker push $ACR_LOGIN_SERVER/tradeforge/$name:latest
+          done
 
   deploy-dev:
     name: Deploy to DEV
@@ -104,8 +65,7 @@ jobs:
     environment: dev
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Azure Login
         uses: azure/login@v2
@@ -121,27 +81,21 @@ jobs:
             --name ${{ vars.AKS_CLUSTER_NAME }} \
             --overwrite-existing
 
-      - name: Deploy to DEV Namespace
+      - name: Deploy to DEV
         run: |
           kubectl apply -f k8s/dev/
 
       - name: Restart DEV Deployments
         run: |
-          kubectl rollout restart deployment/frontend -n dev
-          kubectl rollout restart deployment/market-service -n dev
-          kubectl rollout restart deployment/wallet-service -n dev
-          kubectl rollout restart deployment/order-service -n dev
-          kubectl rollout restart deployment/portfolio-service -n dev
-          kubectl rollout restart deployment/recommendation-service -n dev
+          for deploy in frontend market-service wallet-service order-service portfolio-service recommendation-service; do
+            kubectl rollout restart deployment/$deploy -n dev
+          done
 
       - name: Verify DEV Rollouts
         run: |
-          kubectl rollout status deployment/frontend -n dev --timeout=180s
-          kubectl rollout status deployment/market-service -n dev --timeout=180s
-          kubectl rollout status deployment/wallet-service -n dev --timeout=180s
-          kubectl rollout status deployment/order-service -n dev --timeout=180s
-          kubectl rollout status deployment/portfolio-service -n dev --timeout=180s
-          kubectl rollout status deployment/recommendation-service -n dev --timeout=180s
+          for deploy in frontend market-service wallet-service order-service portfolio-service recommendation-service; do
+            kubectl rollout status deployment/$deploy -n dev --timeout=180s
+          done
 
   deploy-prod:
     name: Deploy to PROD
@@ -150,8 +104,7 @@ jobs:
     environment: prod
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Azure Login
         uses: azure/login@v2
@@ -167,34 +120,26 @@ jobs:
             --name ${{ vars.AKS_CLUSTER_NAME }} \
             --overwrite-existing
 
-      - name: Deploy to PROD Namespace
+      - name: Deploy to PROD
         run: |
           kubectl apply -f k8s/prod/
 
       - name: Restart PROD Deployments
         run: |
-          kubectl rollout restart deployment/frontend -n prod
-          kubectl rollout restart deployment/market-service -n prod
-          kubectl rollout restart deployment/wallet-service -n prod
-          kubectl rollout restart deployment/order-service -n prod
-          kubectl rollout restart deployment/portfolio-service -n prod
-          kubectl rollout restart deployment/recommendation-service -n prod
+          for deploy in frontend market-service wallet-service order-service portfolio-service recommendation-service; do
+            kubectl rollout restart deployment/$deploy -n prod
+          done
 
       - name: Verify PROD Rollouts
         run: |
-          kubectl rollout status deployment/frontend -n prod --timeout=180s
-          kubectl rollout status deployment/market-service -n prod --timeout=180s
-          kubectl rollout status deployment/wallet-service -n prod --timeout=180s
-          kubectl rollout status deployment/order-service -n prod --timeout=180s
-          kubectl rollout status deployment/portfolio-service -n prod --timeout=180s
-          kubectl rollout status deployment/recommendation-service -n prod --timeout=180s
+          for deploy in frontend market-service wallet-service order-service portfolio-service recommendation-service; do
+            kubectl rollout status deployment/$deploy -n prod --timeout=180s
+          done
 
-      - name: Rollback on Failure
+      - name: Rollback PROD on Failure
         if: failure()
+        continue-on-error: true
         run: |
-          kubectl rollout undo deployment/frontend -n prod
-          kubectl rollout undo deployment/market-service -n prod
-          kubectl rollout undo deployment/wallet-service -n prod
-          kubectl rollout undo deployment/order-service -n prod
-          kubectl rollout undo deployment/portfolio-service -n prod
-          kubectl rollout undo deployment/recommendation-service -n prod
+          for deploy in frontend market-service wallet-service order-service portfolio-service recommendation-service; do
+            kubectl rollout undo deployment/$deploy -n prod || true
+          done
